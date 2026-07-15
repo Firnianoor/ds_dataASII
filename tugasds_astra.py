@@ -90,7 +90,6 @@ except Exception as e:
 # ==========================================
 # 3. SIDEBAR & SISTEM FILTER DINAMIS
 # ==========================================
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2830/2830284.png", width=100) # Placeholder logo
 st.sidebar.title("Filter Analisis")
 
 # Membuat dropdown untuk memilih periode kuartal spesifik
@@ -110,7 +109,7 @@ else:
 # ==========================================
 # 4. KPI SCORECARD (BERDASARKAN FILTER)
 # ==========================================
-st.title("📊 Financial Performance Dashboard")
+st.title("Financial Performance Dashboard")
 st.markdown(f"**Analisis Kinerja Keuangan | Periode: {kuartal_terpilih}**")
 
 def tampilkan_kpi(judul, nilai_sekarang, nilai_lalu, format_persen=False):
@@ -158,7 +157,7 @@ st.write("---")
 # ==========================================
 # 5. SISTEM TAB UNTUK ANALISIS MENDALAM
 # ==========================================
-tab1, tab2, tab3 = st.tabs(["📈 Tren & Pertumbuhan", "💰 Analisis Profitabilitas (Margin)", "🏢 Struktur Biaya & Alur Laba"])
+tab1, tab2, tab3 = st.tabs(["Tren & Pertumbuhan", "Analisis Profitabilitas (Margin)", "Struktur Biaya & Alur Laba"])
 
 # ----------------- TAB 1: TREN PENDAPATAN -----------------
 with tab1:
@@ -168,12 +167,9 @@ with tab1:
                        color_discrete_map={'Total Pendapatan': '#29B6F6', 'Total Beban Pokok Penjualan': '#EF5350'})
     fig_line.update_layout(xaxis_title="Kuartal Historis", yaxis_title="Nominal (Miliar IDR)", legend_title="Komponen", hovermode="x unified")
     
-    # Menambahkan garis vertikal penanda kuartal yang dipilih
-    fig_line.add_vline(x=kuartal_terpilih, line_width=2, line_dash="dash", line_color="#00E676", annotation_text="Periode Terpilih", annotation_position="top left")
-    
     st.plotly_chart(fig_line, use_container_width=True)
     
-    st.info("💡 **Insight:** Area grafik menunjukkan jarak antara Pendapatan dan Beban Pokok. Semakin lebar jarak warna biru di atas warna merah, semakin besar Laba Kotor yang dihasilkan perusahaan.")
+    st.info("**Insight:** Area grafik menunjukkan jarak antara Pendapatan dan Beban Pokok. Semakin lebar jarak warna biru di atas warna merah, semakin besar Laba Kotor yang dihasilkan perusahaan.")
 
 # ----------------- TAB 2: ANALISIS MARGIN -----------------
 with tab2:
@@ -185,7 +181,7 @@ with tab2:
                              labels={'value': 'Persentase (%)', 'index': 'Kuartal'},
                              color_discrete_sequence=['#66BB6A', '#FFA726', '#AB47BC'])
         fig_margin.update_layout(yaxis_title="Margin (%)", legend_title="Rasio Keuangan", hovermode="x unified")
-        fig_margin.add_vline(x=kuartal_terpilih, line_width=1, line_dash="dash", line_color="white")
+        
         st.plotly_chart(fig_margin, use_container_width=True)
         
         st.markdown("""
@@ -200,14 +196,12 @@ with tab2:
 with tab3:
     col_w1, col_w2 = st.columns([1.2, 1])
     
-    # Kiri: Waterfall khusus untuk Kuartal yang difilter
     with col_w1:
         st.subheader(f"Alur Laba Rugi ({kuartal_terpilih})")
         
         beban_aktual = [col for col in df_plot.columns if any(b in col for b in ['Beban Penjualan', 'Beban Umum', 'Beban Usaha'])]
         total_beban_usaha = data_q_ini[beban_aktual].sum() if len(beban_aktual) > 0 else 0
         
-        # Ambil nilai dengan default 0 jika kolom tidak ada
         pend_val = data_q_ini.get('Total Pendapatan', 0)
         cogs_val = data_q_ini.get('Total Beban Pokok Penjualan', 0)
         
@@ -226,11 +220,9 @@ with tab3:
         fig_waterfall.update_layout(margin=dict(t=30, b=0, l=0, r=0))
         st.plotly_chart(fig_waterfall, use_container_width=True)
         
-    # Kanan: Komposisi Beban
     with col_w2:
         st.subheader("Komposisi Beban Usaha")
         if beban_aktual:
-            # Tampilkan bar chart hanya untuk kuartal terpilih agar lebih relevan dengan waterfall
             df_beban_pie = pd.DataFrame({'Beban': beban_aktual, 'Nilai': data_q_ini[beban_aktual].values})
             fig_pie = px.pie(df_beban_pie, values='Nilai', names='Beban', hole=0.5, 
                              color_discrete_sequence=px.colors.qualitative.Pastel1)
