@@ -26,6 +26,7 @@ st.markdown("""
     .kpi-value { color: #FFFFFF; font-size: 28px; font-weight: bold; margin-bottom: 5px; }
     .kpi-delta-up { color: #00E676; font-size: 14px; font-weight: bold; }
     .kpi-delta-down { color: #FF5252; font-size: 14px; font-weight: bold; }
+    .kpi-neutral { color: #A6ACCD; font-size: 14px; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -92,42 +93,77 @@ except Exception as e:
 # ==========================================
 st.sidebar.title("Filter Analisis")
 
-# Membuat dropdown untuk memilih periode kuartal spesifik
+# Membuat opsi dropdown dengan "Keseluruhan" di urutan pertama
 daftar_kuartal = df_plot.index.tolist()
-kuartal_terpilih = st.sidebar.selectbox("Pilih Kuartal Analisis:", daftar_kuartal, index=len(daftar_kuartal)-1)
+opsi_filter = ["Keseluruhan"] + daftar_kuartal
+kuartal_terpilih = st.sidebar.selectbox("Pilih Kuartal Analisis:", opsi_filter)
 
-# Mencari index dari kuartal yang dipilih untuk perbandingan (QoQ)
-idx_terpilih = daftar_kuartal.index(kuartal_terpilih)
-data_q_ini = df_plot.iloc[idx_terpilih]
+# Dinamika Kalkulasi Data Berdasarkan Pilihan Filter
+laba_bersih_col = [col for col in df_plot.columns if 'Laba Bersih Tahun Berjalan' in col]
+lb_nama = laba_bersih_col[0] if laba_bersih_col else None
+beban_aktual = [col for col in df_plot.columns if any(b in col for b in ['Beban Penjualan', 'Beban Umum', 'Beban Usaha'])]
 
-# Data kuartal sebelumnya (jika ada) untuk hitung Growth/Delta
-if idx_terpilih > 0:
-    data_q_lalu = df_plot.iloc[idx_terpilih - 1]
+if kuartal_terpilih == "Keseluruhan":
+    is_keseluruhan = True
+    teks_periode = "Seluruh Periode Pencatatan"
+    
+    pend_ini = df_plot.get('Total Pendapatan', pd.Series([0])).sum()
+    cogs_ini = df_plot.get('Total Beban Pokok Penjualan', pd.Series([0])).sum()
+    laba_kotor_ini = df_plot.get('Laba Kotor', pd.Series([0])).sum()
+    laba_bersih_ini = df_plot[lb_nama].sum() if lb_nama else 0
+    npm_ini = (laba_bersih_ini / pend_ini * 100) if pend_ini != 0 else 0
+    total_beban_usaha = df_plot[beban_aktual].sum().sum() if len(beban_aktual) > 0 else 0
+    
+    # Nilai lalu diset 0 karena ini adalah total gabungan
+    pend_lalu, laba_kotor_lalu, laba_bersih_lalu, npm_lalu = 0, 0, 0, 0
+    df_beban_pie = pd.DataFrame({'Beban': beban_aktual, 'Nilai': df_plot[beban_aktual].sum().values})
+
 else:
-    data_q_lalu = data_q_ini # Jika data paling awal, delta = 0
+    is_keseluruhan = False
+    teks_periode = f"Kuartal: {kuartal_terpilih}"
+    
+    idx_terpilih = daftar_kuartal.index(kuartal_terpilih)
+    data_q_ini = df_plot.iloc[idx_terpilih]
+    data_q_lalu = df_plot.iloc[idx_terpilih - 1] if idx_terpilih > 0 else data_q_ini
+    
+    pend_ini = data_q_ini.get('Total Pendapatan', 0)
+    pend_lalu = data_q_lalu.get('Total Pendapatan', 0)
+    cogs_ini = data_q_ini.get('Total Beban Pokok Penjualan', 0)
+    
+    laba_kotor_ini = data_q_ini.get('Laba Kotor', 0)
+    laba_kotor_lalu = data_q_lalu.get('Laba Kotor', 0)
+    
+    laba_bersih_ini = data_q_ini[lb_nama] if lb_nama else 0
+    laba_bersih_lalu = data_q_lalu[lb_nama] if lb_nama else 0
+    
+    npm_ini = data_q_ini.get('Net Profit Margin (%)', 0)
+    npm_lalu = data_q_lalu.get('Net Profit Margin (%)', 0)
+    
+    total_beban_usaha = data_q_ini[beban_aktual].sum() if len(beban_aktual) > 0 else 0
+    df_beban_pie = pd.DataFrame({'Beban': beban_aktual, 'Nilai': data_q_ini[beban_aktual].values})
 
 # ==========================================
-# 4. KPI SCORECARD (BERDASARKAN FILTER)
+# 4. KPI SCORECARD
 # ==========================================
 st.title("Financial Performance Dashboard")
-st.markdown(f"**Analisis Kinerja Keuangan | Periode: {kuartal_terpilih}**")
+st.markdown(f"**Analisis Kinerja Keuangan | Periode: {teks_periode}**")
 
-def tampilkan_kpi(judul, nilai_sekarang, nilai_lalu, format_persen=False):
-    selisih = nilai_sekarang - nilai_lalu
-    if nilai_lalu != 0:
-        pertumbuhan = (selisih / abs(nilai_lalu)) * 100
+def tampilkan_kpi(judul, nilai_sekarang, nilai_lalu, format_persen=False, status_total=False):
+    if status_total:
+        delta_str = "Total Seluruh Periode"
+        warna_delta = "kpi-neutral"
     else:
-        pertumbuhan = 0
+        selisih = nilai_sekarang - nilai_lalu
+        pertumbuhan = (selisih / abs(nilai_lalu)) * 100 if nilai_lalu != 0 else 0
+        simbol_arah = "▲" if selisih > 0 else "▼" if selisih < 0 else "▬"
+        warna_delta = "kpi-delta-up" if selisih >= 0 else "kpi-delta-down"
         
-    simbol_arah = "▲" if selisih > 0 else "▼" if selisih < 0 else "▬"
-    warna_delta = "kpi-delta-up" if selisih >= 0 else "kpi-delta-down"
-    
-    if format_persen:
-        val_str = f"{nilai_sekarang:.2f}%"
-        delta_str = f"{simbol_arah} {abs(selisih):.2f}% (Bps)"
-    else:
-        val_str = f"Rp {nilai_sekarang:,.0f} M"
-        delta_str = f"{simbol_arah} Rp {abs(selisih):,.0f} M ({pertumbuhan:.1f}%) QoQ"
+        if format_persen:
+            delta_str = f"{simbol_arah} {abs(selisih):.2f}% (Bps) QoQ"
+        else:
+            delta_str = f"{simbol_arah} Rp {abs(selisih):,.0f} M ({pertumbuhan:.1f}%) QoQ"
+            
+    val_str = f"{nilai_sekarang:.2f}%" if format_persen else f"Rp {nilai_sekarang:,.0f} M"
         
     st.markdown(f"""
         <div class="kpi-card">
@@ -140,17 +176,13 @@ def tampilkan_kpi(judul, nilai_sekarang, nilai_lalu, format_persen=False):
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    tampilkan_kpi("Total Pendapatan", data_q_ini.get('Total Pendapatan', 0), data_q_lalu.get('Total Pendapatan', 0))
+    tampilkan_kpi("Total Pendapatan", pend_ini, pend_lalu, status_total=is_keseluruhan)
 with col2:
-    tampilkan_kpi("Laba Kotor", data_q_ini.get('Laba Kotor', 0), data_q_lalu.get('Laba Kotor', 0))
+    tampilkan_kpi("Laba Kotor", laba_kotor_ini, laba_kotor_lalu, status_total=is_keseluruhan)
 with col3:
-    laba_bersih_col = [col for col in df_plot.columns if 'Laba Bersih Tahun Berjalan' in col]
-    lb_nama = laba_bersih_col[0] if laba_bersih_col else None
-    val_lb_ini = data_q_ini[lb_nama] if lb_nama else 0
-    val_lb_lalu = data_q_lalu[lb_nama] if lb_nama else 0
-    tampilkan_kpi("Laba Bersih", val_lb_ini, val_lb_lalu)
+    tampilkan_kpi("Laba Bersih", laba_bersih_ini, laba_bersih_lalu, status_total=is_keseluruhan)
 with col4:
-    tampilkan_kpi("Net Profit Margin", data_q_ini.get('Net Profit Margin (%)', 0), data_q_lalu.get('Net Profit Margin (%)', 0), format_persen=True)
+    tampilkan_kpi("Net Profit Margin", npm_ini, npm_lalu, format_persen=True, status_total=is_keseluruhan)
 
 st.write("---")
 
@@ -168,8 +200,7 @@ with tab1:
     fig_line.update_layout(xaxis_title="Kuartal Historis", yaxis_title="Nominal (Miliar IDR)", legend_title="Komponen", hovermode="x unified")
     
     st.plotly_chart(fig_line, use_container_width=True)
-    
-    st.info("**Insight:** Area grafik menunjukkan jarak antara Pendapatan dan Beban Pokok. Semakin lebar jarak warna biru di atas warna merah, semakin besar Laba Kotor yang dihasilkan perusahaan.")
+    st.info("Insight: Area grafik menunjukkan jarak antara Pendapatan dan Beban Pokok. Semakin lebar jarak warna biru di atas warna merah, semakin besar Laba Kotor yang dihasilkan perusahaan.")
 
 # ----------------- TAB 2: ANALISIS MARGIN -----------------
 with tab2:
@@ -183,7 +214,6 @@ with tab2:
         fig_margin.update_layout(yaxis_title="Margin (%)", legend_title="Rasio Keuangan", hovermode="x unified")
         
         st.plotly_chart(fig_margin, use_container_width=True)
-        
         st.markdown("""
         **Panduan Membaca Margin:**
         * **Gross Profit Margin (Hijau):** Mengukur efisiensi produksi. Semakin tinggi, semakin murah biaya dasar untuk membuat/mendistribusikan produk.
@@ -197,13 +227,7 @@ with tab3:
     col_w1, col_w2 = st.columns([1.2, 1])
     
     with col_w1:
-        st.subheader(f"Alur Laba Rugi ({kuartal_terpilih})")
-        
-        beban_aktual = [col for col in df_plot.columns if any(b in col for b in ['Beban Penjualan', 'Beban Umum', 'Beban Usaha'])]
-        total_beban_usaha = data_q_ini[beban_aktual].sum() if len(beban_aktual) > 0 else 0
-        
-        pend_val = data_q_ini.get('Total Pendapatan', 0)
-        cogs_val = data_q_ini.get('Total Beban Pokok Penjualan', 0)
+        st.subheader(f"Alur Laba Rugi ({teks_periode})")
         
         fig_waterfall = go.Figure(go.Waterfall(
             name="Laba Rugi", orientation="v",
@@ -211,7 +235,7 @@ with tab3:
             x=["Pendapatan", "Beban Pokok", "Laba Kotor", "Total Beban Usaha", "Laba Sblm Pajak/Lainnya"],
             textposition="outside",
             texttemplate="%{y:,.0f}",
-            y=[pend_val, cogs_val * -1 if cogs_val > 0 else cogs_val, 0, 
+            y=[pend_ini, cogs_ini * -1 if cogs_ini > 0 else cogs_ini, 0, 
                total_beban_usaha * -1 if total_beban_usaha > 0 else total_beban_usaha, 0],
             decreasing={"marker": {"color": "#FF5252"}},
             increasing={"marker": {"color": "#26A69A"}},
@@ -223,7 +247,6 @@ with tab3:
     with col_w2:
         st.subheader("Komposisi Beban Usaha")
         if beban_aktual:
-            df_beban_pie = pd.DataFrame({'Beban': beban_aktual, 'Nilai': data_q_ini[beban_aktual].values})
             fig_pie = px.pie(df_beban_pie, values='Nilai', names='Beban', hole=0.5, 
                              color_discrete_sequence=px.colors.qualitative.Pastel1)
             fig_pie.update_layout(margin=dict(t=30, b=0, l=0, r=0), legend=dict(orientation="h", y=-0.2))
