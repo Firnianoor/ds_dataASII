@@ -12,9 +12,14 @@ st.set_page_config(page_title="Astra Financial Dashboard", layout="wide", initia
 # Memaksa tema grafik Plotly menjadi Dark Mode
 pio.templates.default = "plotly_dark"
 
-# Kustomisasi CSS untuk Metrik Card agar rapi dan elegan (Dark Theme)
+# Kustomisasi CSS untuk menaikkan Judul ke atas dan mempercantik Metrik Card
 st.markdown("""
     <style>
+    /* Mengurangi jarak kosong di bagian atas halaman */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
     .kpi-card {
         background-color: #1E1E2E;
         border-radius: 10px;
@@ -29,6 +34,9 @@ st.markdown("""
     .kpi-neutral { color: #A6ACCD; font-size: 14px; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
+
+# Judul Dashboard diposisikan paling atas sebelum elemen lain
+st.title("Financial Performance Dashboard")
 
 # ==========================================
 # 2. DATA LOADING, CLEANING & FEATURE ENGINEERING
@@ -107,6 +115,9 @@ if kuartal_terpilih == "Keseluruhan":
     is_keseluruhan = True
     teks_periode = "Seluruh Periode Pencatatan"
     
+    # Data trend utuh
+    df_trend = df_plot.copy()
+    
     pend_ini = df_plot.get('Total Pendapatan', pd.Series([0])).sum()
     cogs_ini = df_plot.get('Total Beban Pokok Penjualan', pd.Series([0])).sum()
     laba_kotor_ini = df_plot.get('Laba Kotor', pd.Series([0])).sum()
@@ -114,7 +125,6 @@ if kuartal_terpilih == "Keseluruhan":
     npm_ini = (laba_bersih_ini / pend_ini * 100) if pend_ini != 0 else 0
     total_beban_usaha = df_plot[beban_aktual].sum().sum() if len(beban_aktual) > 0 else 0
     
-    # Nilai lalu diset 0 karena ini adalah total gabungan
     pend_lalu, laba_kotor_lalu, laba_bersih_lalu, npm_lalu = 0, 0, 0, 0
     df_beban_pie = pd.DataFrame({'Beban': beban_aktual, 'Nilai': df_plot[beban_aktual].sum().values})
 
@@ -123,6 +133,10 @@ else:
     teks_periode = f"Kuartal: {kuartal_terpilih}"
     
     idx_terpilih = daftar_kuartal.index(kuartal_terpilih)
+    
+    # Data trend dipotong (difilter) dari awal HINGGA kuartal yang dipilih
+    df_trend = df_plot.iloc[:idx_terpilih + 1]
+    
     data_q_ini = df_plot.iloc[idx_terpilih]
     data_q_lalu = df_plot.iloc[idx_terpilih - 1] if idx_terpilih > 0 else data_q_ini
     
@@ -142,12 +156,12 @@ else:
     total_beban_usaha = data_q_ini[beban_aktual].sum() if len(beban_aktual) > 0 else 0
     df_beban_pie = pd.DataFrame({'Beban': beban_aktual, 'Nilai': data_q_ini[beban_aktual].values})
 
+# Subjudul diposisikan di bawah Judul Utama
+st.markdown(f"**Analisis Kinerja Keuangan | Periode: {teks_periode}**")
+
 # ==========================================
 # 4. KPI SCORECARD
 # ==========================================
-st.title("Financial Performance Dashboard")
-st.markdown(f"**Analisis Kinerja Keuangan | Periode: {teks_periode}**")
-
 def tampilkan_kpi(judul, nilai_sekarang, nilai_lalu, format_persen=False, status_total=False):
     if status_total:
         delta_str = "Total Seluruh Periode"
@@ -193,22 +207,22 @@ tab1, tab2, tab3 = st.tabs(["Tren & Pertumbuhan", "Analisis Profitabilitas (Marg
 
 # ----------------- TAB 1: TREN PENDAPATAN -----------------
 with tab1:
-    st.subheader("Historis Tren Pendapatan vs Beban Pokok")
-    fig_line = px.area(df_plot, x=df_plot.index, y=['Total Pendapatan', 'Total Beban Pokok Penjualan'],
+    st.subheader(f"Historis Tren Pendapatan vs Beban Pokok ({teks_periode})")
+    fig_line = px.area(df_trend, x=df_trend.index, y=['Total Pendapatan', 'Total Beban Pokok Penjualan'],
                        labels={'value': 'Miliar IDR', 'index': 'Kuartal'},
                        color_discrete_map={'Total Pendapatan': '#29B6F6', 'Total Beban Pokok Penjualan': '#EF5350'})
     fig_line.update_layout(xaxis_title="Kuartal Historis", yaxis_title="Nominal (Miliar IDR)", legend_title="Komponen", hovermode="x unified")
     
     st.plotly_chart(fig_line, use_container_width=True)
-    st.info("Insight: Area grafik menunjukkan jarak antara Pendapatan dan Beban Pokok. Semakin lebar jarak warna biru di atas warna merah, semakin besar Laba Kotor yang dihasilkan perusahaan.")
+    st.info("Insight: Area grafik menunjukkan jarak antara Pendapatan dan Beban Pokok. Semakin lebar jarak warna biru di atas warna merah, semakin besar Laba Kotor yang dihasilkan perusahaan pada rentang waktu terpilih.")
 
 # ----------------- TAB 2: ANALISIS MARGIN -----------------
 with tab2:
-    st.subheader("Analisis Tingkat Efisiensi & Margin Keuntungan")
-    kolom_margin = [c for c in ['Gross Profit Margin (%)', 'Operating Margin (%)', 'Net Profit Margin (%)'] if c in df_plot.columns]
+    st.subheader(f"Analisis Tingkat Efisiensi & Margin Keuntungan ({teks_periode})")
+    kolom_margin = [c for c in ['Gross Profit Margin (%)', 'Operating Margin (%)', 'Net Profit Margin (%)'] if c in df_trend.columns]
     
     if kolom_margin:
-        fig_margin = px.line(df_plot, x=df_plot.index, y=kolom_margin, markers=True,
+        fig_margin = px.line(df_trend, x=df_trend.index, y=kolom_margin, markers=True,
                              labels={'value': 'Persentase (%)', 'index': 'Kuartal'},
                              color_discrete_sequence=['#66BB6A', '#FFA726', '#AB47BC'])
         fig_margin.update_layout(yaxis_title="Margin (%)", legend_title="Rasio Keuangan", hovermode="x unified")
