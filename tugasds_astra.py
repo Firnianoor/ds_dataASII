@@ -3,12 +3,11 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
-import os
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN & TEMA DARK MODE
 # ==========================================
-st.set_page_config(page_title="Financial Dashboard", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dasbor Keuangan", layout="wide", initial_sidebar_state="expanded")
 pio.templates.default = "plotly_dark"
 
 st.markdown("""
@@ -78,7 +77,7 @@ def process_financial_data(file_obj_or_path, is_csv=True):
     return df_t
 
 # ==========================================
-# 3. FUNGSI RENDER DASHBOARD UTAMA
+# 3. FUNGSI RENDER DASBOR UTAMA
 # ==========================================
 def render_dashboard(df_plot, dashboard_title):
     st.title(dashboard_title)
@@ -127,7 +126,7 @@ def render_dashboard(df_plot, dashboard_title):
 
     def tampilkan_kpi(judul, nilai_sekarang, nilai_lalu, format_persen=False, status_total=False):
         if status_total:
-            delta_str = "Total Rentang Terpilih"
+            delta_str = "Total Akumulasi"
             warna_delta = "kpi-neutral"
         else:
             selisih = nilai_sekarang - nilai_lalu
@@ -147,7 +146,7 @@ def render_dashboard(df_plot, dashboard_title):
 
     st.write("---")
 
-    # FITUR BARU: KESIMPULAN & INTERPRETASI DINAMIS
+    # KESIMPULAN & INTERPRETASI DINAMIS
     st.markdown("### Kesimpulan dan Interpretasi Kinerja")
     
     if is_single_quarter and idx_awal > 0:
@@ -157,13 +156,13 @@ def render_dashboard(df_plot, dashboard_title):
         
         narasi = f"Pada periode **{kuartal_awal}**, entitas mencatatkan total pendapatan sebesar **Rp {pend_ini:,.0f} Miliar**. "
         narasi += f"Perolehan ini **{arah_tumbuh} sebesar {abs(pertumbuhan_pend):.1f}%** jika dikomparasikan dengan kuartal sebelumnya. "
-        narasi += f"Dari sisi efisiensi, Margin Laba Bersih perusahaan bertengger di level **{npm_ini:.2f}%**, yang mengindikasikan bahwa profitabilitas operasional tergolong **{kondisi_npm}**."
+        narasi += f"Dari sisi efisiensi operasional, Margin Laba Bersih perusahaan bertengger di level **{npm_ini:.2f}%**, yang mengindikasikan profitabilitas tergolong **{kondisi_npm}**."
         st.info(narasi)
     else:
         kondisi_npm = "solid" if npm_ini > 10 else "rentan" if npm_ini < 5 else "stabil"
         narasi = f"Sepanjang observasi dari **{kuartal_awal} hingga {kuartal_akhir}**, sistem mengakumulasi total pendapatan sebesar **Rp {pend_ini:,.0f} Miliar**. "
         narasi += f"Selama rentang waktu ini, perusahaan rata-rata mampu mengonversi pendapatannya menjadi laba bersih dengan persentase **{npm_ini:.2f}%**. "
-        narasi += f"Skala persentase ini menunjukkan tingkat profitabilitas yang secara keseluruhan tergolong **{kondisi_npm}**."
+        narasi += f"Skala persentase ini menunjukkan tingkat margin keuntungan yang secara keseluruhan tergolong **{kondisi_npm}**."
         st.info(narasi)
         
     st.write("---")
@@ -192,28 +191,38 @@ def render_dashboard(df_plot, dashboard_title):
             st.warning("Data komponen laba tidak mencukupi untuk menghitung rasio margin")
 
     with tab3:
-        col_w1, col_w2 = st.columns([1.2, 1])
-        with col_w1:
-            st.subheader("Alur Laba Rugi Waterfall")
-            fig_waterfall = go.Figure(go.Waterfall(
-                name="Laba Rugi", orientation="v", measure=["absolute", "relative", "total", "relative", "total"],
-                x=["Pendapatan", "Beban Pokok", "Laba Kotor", "Total Beban", "Sisa Laba"],
-                textposition="outside", texttemplate="%{y:,.0f}",
-                y=[pend_ini, cogs_ini * -1 if cogs_ini > 0 else cogs_ini, 0, 
-                   total_beban_usaha * -1 if total_beban_usaha > 0 else total_beban_usaha, 0],
-                decreasing={"marker": {"color": "#FF5252"}}, increasing={"marker": {"color": "#26A69A"}}, totals={"marker": {"color": "#29B6F6"}}
-            ))
-            fig_waterfall.update_layout(margin=dict(t=30, b=0, l=0, r=0))
-            st.plotly_chart(fig_waterfall, use_container_width=True)
-            
-        with col_w2:
-            st.subheader("Komposisi Beban Usaha")
-            if beban_aktual and total_beban_usaha > 0:
+        # Perbaikan Kalkulasi Waterfall agar label teks memunculkan angka yang benar
+        val_pend = pend_ini
+        val_cogs = -abs(cogs_ini) if cogs_ini != 0 else 0
+        val_laba_kotor = val_pend + val_cogs
+        val_beban = -abs(total_beban_usaha) if total_beban_usaha != 0 else 0
+        val_sisa_laba = val_laba_kotor + val_beban
+        
+        fig_waterfall = go.Figure(go.Waterfall(
+            name="Laba Rugi", orientation="v", measure=["absolute", "relative", "total", "relative", "total"],
+            x=["Pendapatan", "Beban Pokok", "Laba Kotor", "Total Beban", "Sisa Laba"],
+            textposition="outside", texttemplate="%{y:,.0f}",
+            y=[val_pend, val_cogs, val_laba_kotor, val_beban, val_sisa_laba],
+            decreasing={"marker": {"color": "#FF5252"}}, increasing={"marker": {"color": "#26A69A"}}, totals={"marker": {"color": "#29B6F6"}}
+        ))
+        fig_waterfall.update_layout(margin=dict(t=30, b=0, l=0, r=0))
+        
+        # Logika UI/UX Responsif: Jika Pie Chart kosong, Waterfall dilebarkan
+        if beban_aktual and total_beban_usaha > 0:
+            col_w1, col_w2 = st.columns([1.2, 1])
+            with col_w1:
+                st.subheader("Alur Laba Rugi")
+                st.plotly_chart(fig_waterfall, use_container_width=True)
+                
+            with col_w2:
+                st.subheader("Komposisi Beban Usaha")
                 fig_pie = px.pie(df_beban_pie, values='Nilai', names='Beban', hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel1)
                 fig_pie.update_layout(margin=dict(t=30, b=0, l=0, r=0), legend=dict(orientation="h", y=-0.2))
                 st.plotly_chart(fig_pie, use_container_width=True)
-            else:
-                st.warning("Data operasional beban spesifik tidak ditemukan")
+        else:
+            st.subheader("Alur Laba Rugi")
+            st.plotly_chart(fig_waterfall, use_container_width=True)
+            st.info("Visualisasi Komposisi Beban Usaha disembunyikan karena rincian data operasional tidak ditemukan pada dataset ini.")
 
 # ==========================================
 # 4. SISTEM NAVIGASI & ROUTING 
@@ -230,12 +239,12 @@ st.sidebar.info("Sistem ini memetakan kesehatan finansial melalui struktur kompo
 if menu == "Dasbor Laporan Astra":
     try:
         df_astra = process_financial_data("dataset_astra.csv", is_csv=True)
-        render_dashboard(df_astra, "Financial Performance Dashboard Astra")
+        render_dashboard(df_astra, "Dasbor Kinerja Keuangan Astra")
     except Exception as e:
-        st.error(f"Gagal memuat file dataset_astra.csv. Pastikan file berada di direktori yang sama. Detail {e}")
+        st.error(f"Gagal memuat file dataset_astra.csv. Pastikan file berada di direktori yang sama. Detail Error {e}")
 
 elif menu == "Unggah Laporan Mandiri":
-    st.title("Interaktif Analisis Laporan Keuangan Eksternal")
+    st.title("Interaktif Dasbor Laporan Keuangan Eksternal")
     st.markdown("""
     Modul ini memfasilitasi Anda untuk mengunggah dan menganalisis laporan laba rugi entitas bisnis lain. 
     Mesin akan membaca pola data dan merangkai kesimpulan secara otomatis.
@@ -273,7 +282,7 @@ elif menu == "Unggah Laporan Mandiri":
             st.divider()
             
             df_custom = process_financial_data(uploaded_file, is_csv=is_csv)
-            render_dashboard(df_custom, "Custom Financial Dashboard")
+            render_dashboard(df_custom, "Dasbor Kinerja Keuangan Kustom")
             
         except Exception as e:
             st.error(f"Sistem gagal mengeksekusi perhitungan. Detail Error {e}")
