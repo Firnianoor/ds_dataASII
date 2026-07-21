@@ -232,7 +232,7 @@ elif menu == "Unggah Laporan Mandiri":
     **Sistem akan memetakan data secara otomatis** menggunakan logika kalkulasi finansial, asalkan format strukturnya konsisten.
     """)
     
-    with st.expander("📌 Syarat Struktur Data & Contoh Format (Klik untuk melihat)", expanded=True):
+    with st.expander(" Syarat Struktur Data & Contoh Format (Klik untuk melihat)", expanded=True):
         st.write("""
         Pastikan file CSV atau Excel Anda memiliki format yang sejajar (mirip dengan data default). Aturan utamanya adalah:
         * **Kolom Pertama:** Berisi nama-nama indikator keuangan (Contoh: *Total Pendapatan*, *Total Beban Pokok Penjualan*, *Laba Bersih*).
