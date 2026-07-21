@@ -220,26 +220,36 @@ st.sidebar.info("Dasbor ini dirancang untuk memetakan kesehatan finansial melalu
 if menu == "Dasbor Laporan Astra":
     try:
         # Mengambil data asli sesuai penugasan Anda
-        df_astra = process_financial_data("dataset_astra.csv", is_csv=True)
-        render_dashboard(df_astra, "Financial Performance Dashboard - Astra")
+        df_astra = process_financial_data("dataset_astra_2.csv", is_csv=True)
+        render_dashboard(df_astra, "Financial Performance Dashboard: Astra")
     except Exception as e:
-        st.error(f"Gagal memuat file dataset_astra.csv. Pastikan file berada di direktori yang sama. Detail: {e}")
+        st.error(f"Gagal memuat file dataset_astra_2.csv. Pastikan file berada di direktori yang sama. Detail: {e}")
 
 elif menu == "Unggah Laporan Mandiri":
     st.title("Interaktif: Analisis Laporan Keuangan Eksternal")
     st.markdown("""
     Modul ini memungkinkan Anda mengunggah laporan laba rugi perusahaan lain. 
-    **Sistem akan memetakan data secara otomatis** menggunakan logika kalkulasi finansial (Bukan Machine Learning), asalkan format strukturnya konsisten.
+    **Sistem akan memetakan data secara otomatis** menggunakan logika kalkulasi finansial, asalkan format strukturnya konsisten.
     """)
     
-    with st.expander(" Syarat Struktur Data (Klik untuk melihat)", expanded=True):
+    with st.expander("📌 Syarat Struktur Data & Contoh Format (Klik untuk melihat)", expanded=True):
         st.write("""
-        Pastikan file CSV atau Excel Anda memiliki format mirip dengan data Astra:
-        * **Kolom Pertama:** Berisi nama-nama indikator (Contoh: *Total Pendapatan*, *Total Beban Pokok Penjualan*, *Laba Bersih*).
-        * **Kolom Selanjutnya:** Merupakan Periode Waktu (Misal: *Q1 2023, Q2 2023*).
+        Pastikan file CSV atau Excel Anda memiliki format yang sejajar (mirip dengan data default). Aturan utamanya adalah:
+        * **Kolom Pertama:** Berisi nama-nama indikator keuangan (Contoh: *Total Pendapatan*, *Total Beban Pokok Penjualan*, *Laba Bersih*).
+        * **Kolom Selanjutnya:** Merupakan Periode Waktu secara berurutan (Misal: *Q1 2023, Q2 2023*, dst).
         """)
+        
+        st.markdown("**Berikut adalah pratinjau format ideal (Diambil dari Dataset Astra):**")
+        
+        # Menampilkan potongan data dataset_astra_2.csv sebagai referensi bagi dosen/pengguna
+        try:
+            df_contoh = pd.read_csv("dataset_astra_2.csv")
+            # Menampilkan 4 baris pertama agar tidak terlalu panjang
+            st.dataframe(df_contoh.head(4), use_container_width=True, hide_index=True)
+        except Exception:
+            st.info("Catatan: File contoh (dataset_astra_2.csv) tidak ditemukan di sistem, namun Anda tetap dapat mengunggah file Anda dengan struktur yang dijelaskan di atas.")
 
-    uploaded_file = st.file_uploader("Seret dan lepaskan file CSV / Excel di sini", type=['csv', 'xlsx'])
+    uploaded_file = st.file_uploader("Seret dan lepaskan file CSV / Excel di sini:", type=['csv', 'xlsx'])
     
     if uploaded_file is not None:
         try:
@@ -247,12 +257,12 @@ elif menu == "Unggah Laporan Mandiri":
             is_csv = uploaded_file.name.endswith('.csv')
             
             # Pratinjau data mentah agar interaktif
-            st.success("File sukses terbaca! Berikut pratinjau data mentah yang Anda masukkan:")
+            st.success("File sukses terbaca! Berikut pratinjau data mentah yang Anda unggah:")
             if is_csv:
                 df_preview = pd.read_csv(uploaded_file)
             else:
                 df_preview = pd.read_excel(uploaded_file)
-            st.dataframe(df_preview.head(), use_container_width=True)
+            st.dataframe(df_preview.head(5), use_container_width=True)
             
             # Reset pointer untuk diproses ulang oleh fungsi cleaning
             uploaded_file.seek(0) 
@@ -264,4 +274,4 @@ elif menu == "Unggah Laporan Mandiri":
             render_dashboard(df_custom, "Custom Financial Dashboard")
             
         except Exception as e:
-            st.error(f"Terjadi kesalahan saat memproses susunan data Anda. Detail: {e}")
+            st.error(f"Terjadi kesalahan saat memproses susunan data Anda. Detail Error: {e}")
