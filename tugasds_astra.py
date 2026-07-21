@@ -243,11 +243,11 @@ elif menu == "Unggah Laporan Mandiri":
         
         # Menampilkan potongan data dataset_astra_2.csv sebagai referensi bagi dosen/pengguna
         try:
-            df_contoh = pd.read_csv("dataset_astra_2.csv")
+            df_contoh = pd.read_csv("dataset_astra.csv")
             # Menampilkan 4 baris pertama agar tidak terlalu panjang
             st.dataframe(df_contoh.head(4), use_container_width=True, hide_index=True)
         except Exception:
-            st.info("Catatan: File contoh (dataset_astra_2.csv) tidak ditemukan di sistem, namun Anda tetap dapat mengunggah file Anda dengan struktur yang dijelaskan di atas.")
+            st.info("Catatan: File contoh (dataset_astra.csv) tidak ditemukan di sistem, namun Anda tetap dapat mengunggah file Anda dengan struktur yang dijelaskan di atas.")
 
     uploaded_file = st.file_uploader("Seret dan lepaskan file CSV / Excel di sini:", type=['csv', 'xlsx'])
     
