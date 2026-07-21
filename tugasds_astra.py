@@ -7,7 +7,7 @@ import os
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN & TEMA DARK MODE
-# ==========================================
+# ==========================================F
 st.set_page_config(page_title="Financial Dashboard", layout="wide", initial_sidebar_state="expanded")
 pio.templates.default = "plotly_dark"
 
@@ -220,10 +220,10 @@ st.sidebar.info("Dasbor ini dirancang untuk memetakan kesehatan finansial melalu
 if menu == "Dasbor Laporan Astra":
     try:
         # Mengambil data asli sesuai penugasan Anda
-        df_astra = process_financial_data("dataset_astra_2.csv", is_csv=True)
+        df_astra = process_financial_data("dataset_astra.csv", is_csv=True)
         render_dashboard(df_astra, "Financial Performance Dashboard: Astra")
     except Exception as e:
-        st.error(f"Gagal memuat file dataset_astra_2.csv. Pastikan file berada di direktori yang sama. Detail: {e}")
+        st.error(f"Gagal memuat file dataset_astra.csv. Pastikan file berada di direktori yang sama. Detail: {e}")
 
 elif menu == "Unggah Laporan Mandiri":
     st.title("Interaktif: Analisis Laporan Keuangan Eksternal")
