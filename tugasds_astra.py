@@ -191,7 +191,6 @@ def render_dashboard(df_plot, dashboard_title):
             st.warning("Data komponen laba tidak mencukupi untuk menghitung rasio margin")
 
     with tab3:
-        # Perbaikan Kalkulasi Waterfall agar label teks memunculkan angka yang benar
         val_pend = pend_ini
         val_cogs = -abs(cogs_ini) if cogs_ini != 0 else 0
         val_laba_kotor = val_pend + val_cogs
@@ -207,7 +206,6 @@ def render_dashboard(df_plot, dashboard_title):
         ))
         fig_waterfall.update_layout(margin=dict(t=30, b=0, l=0, r=0))
         
-        # Logika UI/UX Responsif: Jika Pie Chart kosong, Waterfall dilebarkan
         if beban_aktual and total_beban_usaha > 0:
             col_w1, col_w2 = st.columns([1.2, 1])
             with col_w1:
@@ -222,7 +220,7 @@ def render_dashboard(df_plot, dashboard_title):
         else:
             st.subheader("Alur Laba Rugi")
             st.plotly_chart(fig_waterfall, use_container_width=True)
-            st.info("Visualisasi Komposisi Beban Usaha disembunyikan karena rincian data operasional tidak ditemukan pada dataset ini.")
+            # Pesan informasi dihapus agar UI lebih bersih saat data pie chart tidak ada
 
 # ==========================================
 # 4. SISTEM NAVIGASI & ROUTING 
